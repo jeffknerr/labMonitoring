@@ -70,17 +70,26 @@ the data is stored.
 
 Relevant packages installed on the zabbix server:
 
-- software-properties-common
-- python3-pip
+- apache2
 - bind9-host
+- grafana
 - mysql-client
 - nmap
-- apache2
 - php-mysql
-- zabbix-server-mysql
+- python3-pip
+- software-properties-common
 - zabbix-agent
 - zabbix-frontend-php
-- grafana
+- zabbix-server-mysql
+
+Also used `pip3` to install some python packages, which we will use when
+we add hosts to zabbix.
+
+    pip3 install pyzabbix
+    pip3 install click
+
+pyzabbix: [https://github.com/lukecyca/pyzabbix](https://github.com/lukecyca/pyzabbix)
+click: [https://palletsprojects.com/p/click/](https://palletsprojects.com/p/click/)
 
 ### zabbix configuration details
 
@@ -136,7 +145,7 @@ And here's the final config file:
     StatsAllowedIP=127.0.0.1
     Timeout=5
 
-## configure zabbix frontend
+#### configure zabbix frontend
 
 [https://www.zabbix.com/documentation/4.2/manual/installation/install#installing_frontend](https://www.zabbix.com/documentation/4.2/manual/installation/install#installing_frontend)
 
@@ -153,9 +162,9 @@ Configuration file "/usr/share/zabbix/conf/zabbix.conf.php" created.
 
 (script to mail something to someone, if there's a problem)
 
-## add certbot/letsencrypt
+#### add certbot/letsencrypt
 
-- make sure firewall allows http, https to zabbix server
+- make sure firewall allows http and https to zabbix server
 - add the certbot packages
 
     sudo apt-get update
@@ -180,18 +189,56 @@ Configuration file "/usr/share/zabbix/conf/zabbix.conf.php" created.
     Enabling available site: /etc/apache2/sites-available/000-default-le-ssl.conf
      
     Please choose whether or not to redirect HTTP traffic to HTTPS, removing HTTP access.
-    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     1: No redirect - Make no further changes to the webserver configuration.
     2: Redirect - Make all requests redirect to secure HTTPS access. 
-    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
     Select the appropriate number [1-2] then [enter] (press 'c' to cancel): 2
     Enabled Apache rewrite module
     Redirecting vhost in /etc/apache2/sites-enabled/000-default.conf to ssl vhost in /etc/apache2/sites-available/000-default-le-ssl.conf
     
-    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     Congratulations! You have successfully enabled https://status.cs.swarthmore.edu
 
 ### zabbix adding hosts and items
+
+We are a small computer science department that has labs of
+10-30 computers in the building and around campus. When adding hosts to
+zabbix, we wanted to group the hosts/computers by lab/room number, to
+better keep track of the status of machines in each lab.  
+
+All information about any one computer (e.g., name, IP address, room
+number, etc) is stored in ansible, in that computer's `host_vars` file.
+With this data in ansible, we can generate lists of computers in each
+lab. For example, `hosts.256` contains the names of all computers in room 256.
+
+With these "hosts" files, and using `pyzabbix`, we can add hosts to
+zabbix, using Group names relating to each lab. For example, all
+computers in our `hosts.256` file would be added to zabbix in the
+`Lab_256` group.
+
+In the `utils` directory we include our `addHosts.py` program to add
+hosts to zabbix, given a Group and a Template. You can even include more
+than one group and more than one template, if you want.
+
+Here's an example of using `addHosts.py` to add to zabix all machines 
+in the file `hosts.256`, to the `Lab_256` group, using the "Template OS
+Linux" template (comes with zabbix):
+
+    ./addHosts.py -f hosts.256 -g Lab_256 -t "Template OS Linux"
+
+For all of our linux lab machines and servers, we use the default
+templates that come with zabbix:
+
+- Template OS Linux
+- Template App SSH Service
+- Template Module ICMP Ping
+
+We also install the zabbix-agent on all machines we want to monitor.
+Here's the relevant part of our config file for the zabbix agent:
+
+    $ grep -v ^# /etc/zabbix/zabbix_agentd.conf | sort | uniq
+    EnableRemoteCommands=1
+    Server=1.2.3.4                # put your zabbix server ip here
+    ServerActive=1.2.3.4          # and here
 
 ## install grafana
 
