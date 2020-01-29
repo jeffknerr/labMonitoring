@@ -68,19 +68,29 @@ the data is stored.
 
 ### install details
 
-Relevant packages installed on the zabbix server:
+Both zabbix and grafana were installed from their respective
+repositories. See below for pages to follow.
+
+Follow this page for install and configuration:
+[https://www.zabbix.com/download?zabbix=4.2&os_distribution=debian&os_version=9_stretch&db=mysql](https://www.zabbix.com/download?zabbix=4.2&os_distribution=debian&os_version=9_stretch&db=mysql)
+
+Follow this page for frontend install and config:
+[https://www.zabbix.com/documentation/4.2/manual/installation/install#installing_frontend](https://www.zabbix.com/documentation/4.2/manual/installation/install#installing_frontend)
+
+- change Admin pw
+- add users, superAdmin permissions
+- set up media and email to use our mail server
+
+#### additional packages on server
+
+Some additional packages installed on the zabbix server:
 
 - apache2
 - bind9-host
-- grafana
 - mysql-client
 - nmap
-- php-mysql
 - python3-pip
 - software-properties-common
-- zabbix-agent
-- zabbix-frontend-php
-- zabbix-server-mysql
 
 Also used `pip3` to install some python packages, which we will use when
 we add hosts to zabbix.
@@ -91,78 +101,19 @@ we add hosts to zabbix.
 pyzabbix: [https://github.com/lukecyca/pyzabbix](https://github.com/lukecyca/pyzabbix)
 click: [https://palletsprojects.com/p/click/](https://palletsprojects.com/p/click/)
 
-### zabbix configuration details
+#### additional configs
 
-Note: our zabbix server is called `status`, so you'll see that in the prompts.
+In `zabbix_agentd.conf`, if you want to write and run your own commands 
+on your lab machines, you may need to _enable remote commands_:
 
-Following this page:
-[https://www.zabbix.com/download?zabbix=4.2&os_distribution=debian&os_version=9_stretch&db=mysql](https://www.zabbix.com/download?zabbix=4.2&os_distribution=debian&os_version=9_stretch&db=mysql)
+    EnableRemoteCommands=1
 
-#### configure mysql for zabbix
+You also may need to set the `Server` variables:
 
-    root@status# mysql -uroot -p
-    Enter password: 
-    Welcome to the MariaDB monitor.  Commands end with ; or \g.
-    Your MariaDB connection id is 2
-    Server version: 10.1.38-MariaDB-0+deb9u1 Debian 9.8
-    
-    Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
-    
-    Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
-    
-    MariaDB [(none)]> create database zabbix character set utf8 collate utf8_bin;
-    Query OK, 1 row affected (0.00 sec)
-    
-    MariaDB [(none)]> grant all privileges on zabbix.* to zabbix@localhost identified by 'super secret password';
-    Query OK, 0 rows affected (0.00 sec)
-    
-    MariaDB [(none)]> quit;
-    Bye
-    
-    root@status# zcat /usr/share/doc/zabbix-server-mysql*/create.sql.gz | mysql -uzabbix -p zabbix
-    Enter password: 
-    root@status# 
+    Server=127.0.0.1,1.2.3.4            # change 1.2.3.4 to your zabbix server IP
+    ServerActive=127.0.0.1,1.2.3.4
 
-And here's the final config file:
-
-    root@status#  grep -v ^# /etc/zabbix/zabbix_server.conf | sort | uniq
-    
-    AlertScriptsPath=/usr/lib/zabbix/alertscripts
-    CacheSize=64M
-    DBName=zabbix
-    DBPassword=super secret password                 # <---- NO QUOTES!!!!
-    DBSocket=/var/run/mysqld/mysqld.sock
-    DBUser=zabbix
-    ExternalScripts=/usr/lib/zabbix/externalscripts
-    Fping6Location=/usr/bin/fping6
-    FpingLocation=/usr/bin/fping
-    LogFile=/var/log/zabbix/zabbix_server.log
-    LogFileSize=0
-    LogSlowQueries=3000
-    PidFile=/var/run/zabbix/zabbix_server.pid
-    SNMPTrapperFile=/var/log/snmptrap/snmptrap.log
-    SocketDir=/var/run/zabbix
-    StatsAllowedIP=127.0.0.1
-    Timeout=5
-
-#### configure zabbix frontend
-
-[https://www.zabbix.com/documentation/4.2/manual/installation/install#installing_frontend](https://www.zabbix.com/documentation/4.2/manual/installation/install#installing_frontend)
-
-Congratulations! You have successfully installed Zabbix frontend.
-Configuration file "/usr/share/zabbix/conf/zabbix.conf.php" created.
-
-- change Admin pw
-- add users, superAdmin permissions
-- set up media and email via our mail server
-
-    $ ls -l /usr/lib/zabbix/alertscripts
-    total 4
-    -rwxr-xr-x 1 root root 430 Jul 26 20:42 swattxt
-
-(script to mail something to someone, if there's a problem)
-
-#### add certbot/letsencrypt
+### add certbot/letsencrypt
 
 - make sure firewall allows http and https to zabbix server
 - add the certbot packages
@@ -171,32 +122,11 @@ Configuration file "/usr/share/zabbix/conf/zabbix.conf.php" created.
     sudo apt-get install certbot python-certbot-apache -t stretch-backports
 
 - set it up for apache: `sudo certbot --apache`
+  * provide FQDN for domain name
+  * select 2 (redirect all requests to HTTPS) if you want
 
-    Saving debug log to /var/log/letsencrypt/letsencrypt.log
-    Plugins selected: Authenticator apache, Installer apache
-    No names were found in your configuration files. Please enter in your domain
-    name(s) (comma and/or space separated)  (Enter 'c' to cancel): status.cs.swarthmore.edu
-    Obtaining a new certificate
-    Performing the following challenges:
-    http-01 challenge for status.cs.swarthmore.edu
-    Enabled Apache rewrite module
-    Waiting for verification...
-    Cleaning up challenges
-    Created an SSL vhost at /etc/apache2/sites-available/000-default-le-ssl.conf
-    Enabled Apache socache_shmcb module
-    Enabled Apache ssl module
-    Deploying Certificate to VirtualHost /etc/apache2/sites-available/000-default-le-ssl.conf
-    Enabling available site: /etc/apache2/sites-available/000-default-le-ssl.conf
-     
-    Please choose whether or not to redirect HTTP traffic to HTTPS, removing HTTP access.
-    1: No redirect - Make no further changes to the webserver configuration.
-    2: Redirect - Make all requests redirect to secure HTTPS access. 
-    
-    Select the appropriate number [1-2] then [enter] (press 'c' to cancel): 2
-    Enabled Apache rewrite module
-    Redirecting vhost in /etc/apache2/sites-enabled/000-default.conf to ssl vhost in /etc/apache2/sites-available/000-default-le-ssl.conf
-    
-    Congratulations! You have successfully enabled https://status.cs.swarthmore.edu
+- now try using https to get to your zabbix frontend
+
 
 ### zabbix adding hosts and items
 
@@ -208,20 +138,21 @@ better keep track of the status of machines in each lab.
 All information about any one computer (e.g., name, IP address, room
 number, etc) is stored in ansible, in that computer's `host_vars` file.
 With this data in ansible, we can generate lists of computers in each
-lab. For example, `hosts.256` contains the names of all computers in room 256.
+lab. For example, a `hosts.256` file contains the names of all computers in room 256.
 
 With these "hosts" files, and using `pyzabbix`, we can add hosts to
 zabbix, using Group names relating to each lab. For example, all
 computers in our `hosts.256` file would be added to zabbix in the
 `Lab_256` group.
 
-In the `utils` directory we include our `addHosts.py` program to add
+In the `utils` directory of this repo we include our `addHosts.py` program to add
 hosts to zabbix, given a Group and a Template. You can even include more
 than one group and more than one template, if you want.
 
-Here's an example of using `addHosts.py` to add to zabix all machines 
+Here's an example of using `addHosts.py` to add to zabbix all machines 
 in the file `hosts.256`, to the `Lab_256` group, using the "Template OS
-Linux" template (comes with zabbix):
+Linux" template (comes with zabbix, and the zabbix group must already
+exist in zabbix):
 
     ./addHosts.py -f hosts.256 -g Lab_256 -t "Template OS Linux"
 
@@ -232,14 +163,28 @@ templates that come with zabbix:
 - Template App SSH Service
 - Template Module ICMP Ping
 
-We also install the zabbix-agent on all machines we want to monitor.
-Here's the relevant part of our config file for the zabbix agent:
+**We also install the zabbix-agent on all machines we want to monitor**.
+So all lab machines run zabbix-agent, and allow the zabbix server to 
+monitor them.
+Here's the relevant part of our config file for the zabbix agent
+on each lab machine:
 
     $ grep -v ^# /etc/zabbix/zabbix_agentd.conf | sort | uniq
     EnableRemoteCommands=1
     Server=1.2.3.4                # put your zabbix server ip here
     ServerActive=1.2.3.4          # and here
 
+At this point we have zabbix running on a server and gathering data 
+from all of our servers and lab machines.
+
+Zabbix can make it's own graphs and dashboards. Below is an overview
+dashboard with problems and some host graphs and data. See the grafana
+install info below that for another way to make pretty dashboards.
+
+![zabbix dashboard](images/zabbix-dash.png)
+
 ## install grafana
+
+## guest access 
 
 ## set up monitoring and dashboards
