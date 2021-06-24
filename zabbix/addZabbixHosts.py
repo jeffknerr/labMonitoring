@@ -18,8 +18,9 @@ Typical uses:
 - if given host already exists, you can leave as is or replace
 - if given template doesn't exist, will quit (won't make template)
 - if given group doesn't exist, will quit (won't make group)
-So you need to make the groups and template first, in zabbix (or use the
-templates that come with zabbix)
+
+So you need to make the groups and templates FIRST, 
+in zabbix (or use the templates that come with zabbix)
 """
 
 from pyzabbix import ZabbixAPI
@@ -29,15 +30,12 @@ import os, sys
 import socket
 import click
 
-# edit this as needed
-ZURL = "https://myserver.edu/zabbix"
-
 @click.command()
 @click.option('-f','--hostfile', default=None, help="file with hostnames to add")
 @click.option('-h','--host', default=None, help="host to add")
 @click.option('--group','-g',multiple=True,default=['all'],
         help="group(s)",show_default=True)
-@click.option('--template','-t',multiple=True,default=['Template OS Linux'],
+@click.option('--template','-t',multiple=True,default=['Linux by Zabbix agent'],
         help="template",show_default=True)
 @click.option('--snmp/--no-snmp', default=False, 
         help="use SNMP (default is to use ZabbixAgent)")
@@ -68,9 +66,9 @@ def main(hostfile, host, group, template, snmp, replace):
 
 def login():
     """log into Zabbix API as superAdmin, return API object"""
-    zabbixAPI = ZabbixAPI(ZURL)
     fn = os.environ["HOME"] + "/zabbixAuth"
-    uname,pw = readAuth(fn)
+    uname,pw,ZURL = readAuth(fn)
+    zabbixAPI = ZabbixAPI(ZURL)
     try:
         zabbixAPI.login(uname, pw)
         return zabbixAPI
@@ -86,7 +84,7 @@ def readAuth(filename):
         uname = inf.readline().strip()
         pw = inf.readline().strip()
         inf.close()
-        return uname, pw
+        return uname, pw, url
     except:
         print("Problem reading auth file...")
         sys.exit(1)
@@ -192,5 +190,5 @@ def checkIP(oneHost):
         print("Couldn't find %s's IP..." % (oneHost))
         sys.exit()
 
-####################################################################################
+# ------------------------------------- #
 main()
