@@ -12,18 +12,14 @@ Here are two quick examples of the dashboards we will create:
 ![cpu graphs](images/cpuloads.png)
 
 The above shows CPU load vs. time for all of our lab computers and
-servers. Additionally, clicking in the upper-left corner of any graph
-takes you to a more detailed status page for that particular computer
-(see below).
+servers. The next dashboard below shows *uptimes* with color thresholds
+to highlight short uptimes:
 
 ![uptimes](images/uptimes.png)
 
-This grafana dashboard uses the 
-[Singlestat Math Panel](https://grafana.com/grafana/plugins/blackmirror1-singlestat-math-panel)
-to show *uptimes* for all lab computers. Additionally, thresholds are set
-to color the panels grey (host down), red (host just came up), yellow (up
-for less than a day), or green. These panels also include links to 
-more detailed dashboard status pages for each computer, like this:
+All of the above panels include a link at the top left to 
+a more detailed dashboard status page for that specific computer, 
+like this:
 
 ![host detailed status](images/hoststatus.png)
 
@@ -40,19 +36,20 @@ Note: as of June 2021, this works for Zabbix v5.4 and Grafana v8.0.3
 ### preliminaries
 
 For our install (updated Summer 2021) we used debian buster on a virtual
-machine for the zabbix server, running version 5.4 of zabbix.
+machine for the zabbix server, running version 5.4 of zabbix. Both zabbix
+and grafana run on the same server.
 
-Here's the Zabbix System Information panel to show about how many things
+Here's the Zabbix System Information panel to show how many things
 (hosts, items, etc) we are monitoring:
 
 ![zabbix system info](images/zabbixSysInfo.png)
 
 For our virtual machine, we are using qemu-kvm, also running on a debian
-stretch machine. The kvm host machine has 64GB of memory and 8 CPU
+buster host server. The kvm host server has 64GB of memory and 8 CPU
 cores, and runs a few other virtual machines for us.
 
 For the actual zabbix server, our virtual machine has 24GB of memory,
-4 virtual CPUs, and 31GB of disk space. The memory is probably way
+4 virtual CPUs, and 32GB of disk space. The memory is probably way
 over-provisioned. We are currently using much less than that (output 
 from `top` command):
 
@@ -98,11 +95,13 @@ you can put the password in without quotes: `DBPassword=passwords are cool`
 
 #### install apache and certbot/letsencrypt
 
-- make sure firewall allows http and https to zabbix server
+- make sure your firewall allows http and https to zabbix server
 - add the certbot packages
 
-    sudo apt-get update
-    sudo apt-get install apache2 certbot python-certbot-apache 
+```bash
+sudo apt-get update
+sudo apt-get install apache2 certbot python-certbot-apache 
+```
 
 - set it up for apache: `sudo certbot --apache`
   * provide FQDN for domain name
@@ -125,7 +124,13 @@ Follow this page for frontend install and config:
   * Set up SMS script??
   * Set up slack webhook??
 
-Change CacheSize=64M in zabbix_server.conf
+---
+
+Also NOTE: after adding a few hosts (> 20) I had to 
+change the `CacheSize=64M` in `/etc/zabbix/zabbix_server.conf` (it was
+originally set to 8M).
+
+---
 
 #### additional packages on server
 
