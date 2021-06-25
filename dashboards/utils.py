@@ -2,6 +2,7 @@
 from pyzabbix import ZabbixAPI
 import sys
 
+# change this to your default (contains all computers) group
 DEFAULTGROUP = "SwatCSComputers"
 
 def getCredentials(zabAuth, grafAuth):

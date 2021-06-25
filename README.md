@@ -115,12 +115,21 @@ Once you have https working, you can log in to the zabbix frontend.
 Follow this page for frontend install and config:
 [https://www.zabbix.com/documentation/current/manual/installation/frontend](https://www.zabbix.com/documentation/current/manual/installation/frontend)
 
-- change the Admin password from `zabbix` to something better
-- add users, with superAdmin permissions (blue `Create` user button top right)
-- disabled the Admin user (and guest) after successful login as non-admin
+- pick the default language
+- check that all of the PHP stuff shows up as OK and green
+- set the db connection user and password (zabbix and whatever you set DBPassword to)
+- pick the time zone
+- click Finish
+
+Finally you should be at the login screen for the zabbix web interface.
+On first login here's what I did:
+
+- changed the Admin password from `zabbix` to something better
+- added users, with superAdmin permissions (blue `Create` user button top right)
+- disabled the Admin user (and guest) after successful login as myself
 - set up media: 
-  * Email to use our mail server 
-  * disable others??
+  * Email to use our own mail server 
+  * disabled most other media
   * Set up SMS script??
   * Set up slack webhook??
 
@@ -395,17 +404,19 @@ These scripts were originally created by
 
 I have streamlined a few of these and put them in the `dashboards` directory.
 For example, running `singelStatUptimes.py` should create the above
-uptimes dashboard for all zabbix hosts in the `ALL` group (see `utils.py` to change
-that group).
+uptimes dashboard for all zabbix hosts in the `DEFAULTGROUP` group 
+(see `utils.py` to change that group).
 
-To run the scripts you will need to create a grafana token. In the grafana web interface,
-go to `Configuration -> API Keys` and click the "Add API Key" button. Copy the long
+**To run the scripts you will need to create a grafana token**. 
+In the grafana web interface,
+go to `Configuration -> API Keys` and click the "New API key" button. Give it
+a name, select Admin role, click Add. Now copy the long
 string it shows and put it in a `~/grafanaToken` file if you want to use these
 dashboard scripts. The full `~/grafanaToken` format should look like this:
 
 ```bash
 $ cat ~/grafanaToken
-eyJrIjoiYxxxxxxreplaceThisWithYourGrafanaApiTokenxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxZW4iLCJpZCI6MX0=
+a really long string that you should replace with your grafana token....
 http://localhost:3000
 ```
 
