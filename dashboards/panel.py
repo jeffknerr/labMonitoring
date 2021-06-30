@@ -189,15 +189,18 @@ class SingleStatPanel(Panel):
 
     def __init__(self, title="title", queryArray=None, valueMaps=None, rangeMaps=None, 
             prefix=None, postfix=None, colors=None, thresholds=None, units=None, JSON=None, 
-            decimals=None, colorMode=None, graphMode=None, absLink=None, calcs=None):
+            decimals=None, colorMode=None, graphMode=None, absLink=None, calcs=None,
+            orientation=None, textMode=None):
 
         Panel.__init__(self, "singlestat", title=title, queryArray=queryArray, JSON=JSON, absLink=absLink)
         if JSON==None:
             self._buildDictionary(valueMaps, rangeMaps, prefix, postfix, colors, 
-                    thresholds, units, decimals, colorMode, graphMode, calcs)
+                    thresholds, units, decimals, colorMode, graphMode, calcs, orientation,
+                    textMode)
 
     def _buildDictionary(self, valueMaps, rangeMaps, prefix, postfix, colors, thresholds, 
-            units, decimals, colorMode, graphMode, calcs):
+            units, decimals, colorMode, graphMode, calcs, orientation,
+            textMode):
         """called by constructor, builds singlestat panel dictionary"""
         singleStatDictionary = self._readJSON("singlestat.json")
         singleStatDictionary["title"] = self.title
@@ -221,6 +224,14 @@ class SingleStatPanel(Panel):
             singleStatDictionary["options"]["colorMode"] = colorMode
         else:
             singleStatDictionary["options"]["colorMode"] = "value"
+        if orientation != None:
+            singleStatDictionary["options"]["orientation"] = orientation
+        else:
+            singleStatDictionary["options"]["orientation"] = "auto"
+        if textMode != None:
+            singleStatDictionary["options"]["textMode"] = textMode
+        else:
+            singleStatDictionary["options"]["textMode"] = "value"
         if graphMode != None:
             singleStatDictionary["options"]["graphMode"] = "area"
         else:

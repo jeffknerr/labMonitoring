@@ -1,0 +1,28 @@
+#! /bin/bash
+
+# script for ansible to run that adds to zabbix any new 
+# hosts in the /usr/swat/db/hosts.* files
+
+# add --replace if you want to replace the host (default is to
+# leave as is if already in zabbix)
+
+DBDIR=/usr/swat/db
+ADD=/home/knerr/labMonitoring/zabbix/addZabbixHosts.py
+GSWAT=SwatCSComputers 
+TOS="Linux by Zabbix agent" 
+TSSH="SSH Service" 
+TPING="ICMP Ping"
+
+$ADD -f ${DBDIR}/hosts.offices    -g OfficeMachines -g $GSWAT -t "$TOS" -t "$TSSH" -t "$TPING"
+$ADD -f ${DBDIR}/hosts.overflow   -g Lab_238        -g $GSWAT -t "$TOS" -t "$TSSH" -t "$TPING"
+$ADD -f ${DBDIR}/hosts.mainlab    -g Lab_240        -g $GSWAT -t "$TOS" -t "$TSSH" -t "$TPING"
+$ADD -f ${DBDIR}/hosts.robotlab   -g Lab_252        -g $GSWAT -t "$TOS" -t "$TSSH" -t "$TPING"
+$ADD -f ${DBDIR}/hosts.256        -g Lab_256        -g $GSWAT -t "$TOS" -t "$TSSH" -t "$TPING"
+$ADD -f ${DBDIR}/hosts.bookstore  -g Lab_Clothier   -g $GSWAT -t "$TOS" -t "$TSSH" -t "$TPING"
+$ADD -f ${DBDIR}/hosts.serverroom -g Lab_ServerRoom -g $GSWAT -t "$TOS" -t "$TSSH" -t "$TPING"
+
+# servers?
+# virtual machines?
+# ones in the GPU group
+
+# create this script from ansible???!!

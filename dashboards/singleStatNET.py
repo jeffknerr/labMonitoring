@@ -28,6 +28,9 @@ def main():
                 queryArray=[q1,q2], 
                 decimals=1, 
                 units="bps", 
+                orientation="horizontal", 
+                textMode="value", 
+                colorMode="background", 
                 thresholds=[250000,500000,750000,1000000,1250000,1500000], 
                 colors=["purple","blue","green","yellow","orange","red"], 
                 absLink=link)
