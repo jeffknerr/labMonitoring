@@ -10,7 +10,7 @@ from utils import *
 import os                   
 
 postURL = "http://localhost:3000/api/dashboards/db"
-base = "https://blade.cs.swarthmore.edu/grafana/"
+base = "https://status.cs.swarthmore.edu/grafana/"
                           
 def main():
     zabAuth = os.environ["HOME"] + "/zabbixAuth"
@@ -25,7 +25,8 @@ def main():
         p = SingleStatPanel(title=host, 
                 queryArray=[q], 
                 decimals=1, 
-                thresholds = [0,1,2,5,10],
+                calcs="lastNotNull",
+                thresholds = ["null",0,1,2,5,10],
                 colors=["grey", "green","yellow","orange","red","white"], 
                 colorMode="background", 
                 absLink=link)

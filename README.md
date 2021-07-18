@@ -66,6 +66,10 @@ And our disk space currently looks like this:
 Of the 18GB used in `/`, almost all of that is in `/var/lib/mysql` where
 the data is stored.
 
+Note: for debian kvm hosts, see the
+[Libvirt Wiki](https://wiki.libvirt.org/page/Virtio)
+if your host network interface is only 100Mbps (change to using the `virtio` interface).
+
 ### install details
 
 Both zabbix (v5.4) and grafana were installed from their respective
@@ -158,6 +162,7 @@ we add hosts to zabbix.
 
     pip3 install pyzabbix
     pip3 install click
+    pip3 install mysql-connector-python
 
 - pyzabbix: [https://github.com/lukecyca/pyzabbix](https://github.com/lukecyca/pyzabbix)
 - click: [https://palletsprojects.com/p/click/](https://palletsprojects.com/p/click/)
@@ -261,7 +266,7 @@ Zabbix can make it's own graphs and dashboards. Below is an overview
 dashboard with problems and some host graphs and data. See the grafana
 install info below for a better way to make pretty dashboards.
 
-![zabbix dashboard](images/zabbix-dash.png)
+![zabbix global dashboard](images/zabbix_global.png)
 
 ## install grafana
 
@@ -355,7 +360,8 @@ sudo systemctl restart grafana-server
 ### login to grafana, add zabbix datasource
 
 At this point you should be able to login to grafana with the
-default admin/admin account. You should/must change that password.
+default admin/admin account. You should/must change that password
+(might have to do this from the `ServerAdmin -> Users` section). 
 Once you've done that we need to add zabbix as a datasource.
 
 Use the grafana-cli command in a terminal to add it and restart grafana again:
@@ -422,3 +428,36 @@ http://localhost:3000
 
 
 ## guest access 
+
+Here are the changes to `/etc/grafana/grafana.ini` to allow guest access
+(and a few other things, like serving from `/grafana`):
+
+```
+[server]
+root_url = %(protocol)s://%(domain)s:%(http_port)s/grafana
+serve_from_sub_path = true
+
+[security]
+disable_gravatar = true
+
+[dashboards]
+versions_to_keep = 10
+
+[users]
+allow_sign_up = false
+allow_org_create = false
+auto_assign_org_role = Viewer
+
+[auth.anonymous]
+enabled = true
+org_name = SwatCS
+org_role = Viewer
+hide_version = true
+
+[auth.proxy]
+enabled = true
+auto_sign_up = false
+
+[auth.jwt]
+enabled = false
+```

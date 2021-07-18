@@ -11,7 +11,7 @@ from pyzabbix import ZabbixAPI
 import os                   
 
 postURL = "http://localhost:3000/api/dashboards/db"
-base = "https://blade.cs.swarthmore.edu/grafana/"
+base = "https://status.cs.swarthmore.edu/grafana/"
                           
 def main():
     zabAuth = os.environ["HOME"] + "/zabbixAuth"
@@ -25,15 +25,15 @@ def main():
         q2= Query(host, "Interface eth0: Bits sent", alias="outTraffic")
         link = base + host
         p = SingleStatPanel(title=host, 
-                queryArray=[q1,q2], 
-                decimals=1, 
-                units="bps", 
-                orientation="horizontal", 
-                textMode="value", 
-                colorMode="background", 
-                thresholds=[250000,500000,750000,1000000,1250000,1500000], 
-                colors=["purple","blue","green","yellow","orange","red"], 
-                absLink=link)
+             queryArray=[q1,q2], 
+             decimals=1, 
+             units="bps", 
+             orientation="horizontal", 
+             textMode="value", 
+             colorMode="background", 
+             thresholds=["null",100000,250000,500000,750000,1000000,1250000,1500000], 
+             colors=["white","rgb(37,0,102)","blue","green","yellow","orange","rgb(178,0,0)","rgb(255,0,0)"],
+             absLink=link)
         panels.append(p)
     DB.addPanels(panels)
     DB.push(postURL)

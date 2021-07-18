@@ -9,7 +9,7 @@ from pyzabbix import ZabbixAPI
 import os
 
 postURL = "http://localhost:3000/api/dashboards/db"
-base = "https://blade.cs.swarthmore.edu/grafana/"
+base = "https://status.cs.swarthmore.edu/grafana/"
                           
 def main():
     zabAuth = os.environ["HOME"] + "/zabbixAuth"
@@ -26,8 +26,8 @@ def main():
                 colorMode="background",
                 units="decbits",
                 calcs="lastNotNull",
-                colors = ["dark-red","dark-yellow","dark-orange","dark-green","dark-blue","rgb(50,50,50)"],
-                thresholds = ["null",8000000000,16000000000,32000000000,64000000000,128000000000],
+                colors = ["white", "dark-red","dark-yellow","dark-orange","dark-green","dark-blue","rgb(80,10,100)"],
+                thresholds = ["null",1000000000,8000000000,16000000000,32000000000,64000000000,128000000000],
                 absLink=link)
         panels.append(p)
     db.addPanels(panels)

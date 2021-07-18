@@ -148,12 +148,10 @@ def updateZabbixHost(host, gIDs, zabbixAPI, tIDs):
 
     # now the templates
     templateArray = zabbixAPI.template.get(output="templateid", hostids=hid)
-    print(templateArray)
     for templateID in tIDs:
         templateArray.append({'templateid':templateID})
 
     ourHost = {'hostid':hid,'groups':groupArray,'templates':templateArray}
-    print(ourHost)
    
     print("Updating %s in zabbix..." % (host))
     ret = zabbixAPI.host.update(ourHost)
