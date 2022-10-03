@@ -31,12 +31,15 @@ useful dashboards.
 Note: as of June 2021, this works for Zabbix v5.4 and Grafana v8.0.3
 (on Debian 10).
 
+Note: updating this page in September 2022. Trying Zabbix v6.2 and Grafana v8.0.3
+(on Debian 11).
+
 ## install zabbix
 
 ### preliminaries
 
-For our install (updated Summer 2021) we used debian buster on a virtual
-machine for the zabbix server, running version 5.4 of zabbix. Both zabbix
+For our install (updated Fall 2022) we used debian buster on a virtual
+machine for the zabbix server, running version 6.2 of zabbix. Both zabbix
 and grafana run on the same server.
 
 Here's the Zabbix System Information panel to show how many things
@@ -45,40 +48,50 @@ Here's the Zabbix System Information panel to show how many things
 ![zabbix system info](images/zabbixSysInfo.png)
 
 For our virtual machine, we are using qemu-kvm, also running on a debian
-buster host server. The kvm host server has 64GB of memory and 8 CPU
+buster host server. The kvm host server has 128GB of memory and 16 CPU
 cores, and runs a few other virtual machines for us.
 
-For the actual zabbix server, our virtual machine has 24GB of memory,
-4 virtual CPUs, and 32GB of disk space. The memory is probably way
-over-provisioned. We are currently using much less than that (output 
-from `top` command):
+For the actual zabbix server, our virtual machine has 64GB of memory,
+4 virtual CPUs, and 64GB of disk space. The memory is probably a little
+over-provisioned, but I depend on this server to see what's going on with
+all of my other servers, so I need it to run well. Here's the output
+from the `top` command (after everything is working):
 
-    KiB Mem : 24694224 total,  8368976 free,   786036 used, 15539212 buff/cache
-    KiB Swap:  2097148 total,  2097148 free,        0 used. 23273784 avail Mem
+```
+top - 11:03:53 up 5 days, 22:26,  1 user,  load average: 1.00, 0.77, 0.75
+Tasks: 176 total,   1 running, 175 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  5.5 us,  4.5 sy,  0.0 ni, 86.8 id,  2.3 wa,  0.0 hi,  0.8 si,  0.0 st
+MiB Mem :  64321.0 total,  53090.1 free,   1314.9 used,   9916.0 buff/cache
+MiB Swap:   2048.0 total,   2048.0 free,      0.0 used.  62212.9 avail Mem 
+```
 
 And our disk space currently looks like this:
 
-    Filesystem      Size  Used Avail Use% Mounted on
-    /dev/sda1        24G   18G  4.4G  81% /
-    /dev/sda6       3.9G  2.2G  1.6G  59% /usr
-    /dev/sda5       575M  932K  562M   1% /tmp
+```
+$ df -h                                                               
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        53G   12G   39G  23% /
+/dev/sda4       7.8G  3.1G  4.3G  42% /usr
+/dev/sda3       574M  1.2M  561M   1% /tmp
+```
 
-Of the 18GB used in `/`, almost all of that is in `/var/lib/mysql` where
-the data is stored.
+Of the 12GB used so far in `/`, almost all of that is in `/var/lib/mysql` where
+the data is stored (and on a past server this went up to 32GB over time).
 
 Note: for debian kvm hosts, see the
 [Libvirt Wiki](https://wiki.libvirt.org/page/Virtio)
 if your host network interface is only 100Mbps (change to using the `virtio` interface).
+ADD STUFF HERE ABOUT HOW.
 
 ### install details
 
-Both zabbix (v5.4) and grafana were installed from their respective
+Both zabbix (v6.2) and grafana were installed from their respective
 repositories. See below for pages to follow.
 
 #### install zabbix and mysql
 
 Follow this page for install and configuration:
-[https://www.zabbix.com/download?zabbix=5.4&os_distribution=debian&os_version=10_buster&db=mysql&ws=apache](https://www.zabbix.com/download?zabbix=5.4&os_distribution=debian&os_version=10_buster&db=mysql&ws=apache)
+[https://www.zabbix.com/download?zabbix=6.2&os_distribution=debian&os_version=10_buster&db=mysql](https://www.zabbix.com/download?zabbix=6.2&os_distribution=debian&os_version=10_buster&db=mysql)
 
 Note: for the above, after installing (step b) but before creating the 
 mysql database (step c), I followed this page on making mysql a little
@@ -86,14 +99,58 @@ more secure:
 
 [https://www.digitalocean.com/community/tutorials/how-to-install-mariadb-on-debian-10](https://www.digitalocean.com/community/tutorials/how-to-install-mariadb-on-debian-10)
 
-- installed mariadb-server
+- installed mariadb-server (was already installed from above)
 - ran the `mysql_secure_installation` script
+- got confused by the "Switch to unix_socket authentication" question and
+  actually did this -- we'll see if it causes a problem later (fingers crossed)
 - left the root password blank
 - said Yes to other defaults
-- set up an admin account with password
+- set up an admin account with password (see the above digitalocean page)
 - tested access with `mysqladmin -u admin -p version`
 
-Also note: for the mysql password for the zabbix user, if you make 
+After running the `mysql_secure_installation` script I then went back
+to the zabbix install page and did steps c, d, and e.
+
+Here's an (cleaned up) example of step c from my install:
+
+```
+$ sudo mysql -uroot -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Server version: 10.5.15-MariaDB-0+deb11u1 Debian 11
+
+MariaDB [(none)]> create database zabbix character set utf8mb4 collate utf8mb4_bin;
+Query OK, 1 row affected (0.001 sec)
+
+MariaDB [(none)]> create user zabbix@localhost identified by 'not a good pw';
+Query OK, 0 rows affected (0.007 sec)
+
+MariaDB [(none)]> grant all privileges on zabbix.* to zabbix@localhost;
+Query OK, 0 rows affected (0.004 sec)
+
+MariaDB [(none)]> set global log_bin_trust_function_creators = 1;
+Query OK, 0 rows affected (0.000 sec)
+
+MariaDB [(none)]> quit;
+Bye
+
+$ sudo su
+root# zcat /usr/share/doc/zabbix-sql-scripts/mysql/server.sql.gz | mysql --default-character-set=utf8mb4 -uzabbix -p zabbix
+Enter password: not a good pw
+(this part take 20-40 seconds)
+root# exit
+$ sudo mysql -uroot -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+
+MariaDB [(none)]> set global log_bin_trust_function_creators = 0;
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> quit;
+Bye
+```
+
+Note: for the mysql password for the zabbix user, if you make 
 the password (in step c) 'passwords are cool', then in `zabbix_server.conf` (step d)
 you can put the password in without quotes: `DBPassword=passwords are cool`
 
@@ -114,7 +171,7 @@ sudo apt-get install apache2 certbot python-certbot-apache
 
 #### configure zabbix front end
 
-Once you have https working, you can log in to the zabbix frontend.
+Once you have https working, you can configure the zabbix frontend.
 
 Follow this page for frontend install and config:
 [https://www.zabbix.com/documentation/current/manual/installation/frontend](https://www.zabbix.com/documentation/current/manual/installation/frontend)
@@ -125,11 +182,17 @@ Follow this page for frontend install and config:
 - pick the time zone
 - click Finish
 
-Finally you should be at the login screen for the zabbix web interface.
+Finally you should be at the login screen for the zabbix web interface
+It should also be using https! Log in with the defaults (Admin, zabbix) and
+then change them.
+
 On first login here's what I did:
 
-- changed the Admin password from `zabbix` to something better
-- added users, with superAdmin permissions (blue `Create` user button top right)
+- changed the Admin password from `zabbix` to something better (Administration -> Users,
+  then click on Admin user and click on Change password)
+- added users (blue `Create user` user button at top right
+  of Administration -> Users page) with Group equal to Zabbix admin group and with 
+  permissions/role (have to click on Permissions tab) equal to "super admin"
 - disabled the Admin user (and guest) after successful login as myself
 - set up media: 
   * Email to use our own mail server 
@@ -157,8 +220,8 @@ Some additional packages installed on the zabbix server:
 - python3-pip
 - software-properties-common
 
-Also used `pip3` to install some python packages, which we will use when
-we add hosts to zabbix.
+Also used `pip3` (as a normal user) to install some python packages, 
+which we will use when we add hosts to zabbix.
 
     pip3 install pyzabbix
     pip3 install click
@@ -184,20 +247,22 @@ You also may need to set the `Server` variables:
 
 #### make Host groups
 
-- Configuration
-- Host groups
-- Create host group (blue button top right)
+Configuration -> Host groups -> Create host group (blue button top right)
 
 These host groups are just "logical groups" that are used for filtering.
 Initially create a bunch of empty groups, however you want to group
 your computers. Then (below) we will add computers to zabbix and populate
 the groups.
 
-I created a group for each lab (room) we have (e.g., Lab238, Lab240, etc), 
+For example, I created a group for each lab (room) we have (e.g., Lab_238, Lab_240, etc), 
 as well as a group for servers, virtual machines, 
 printers, special computers (with good GPUs), and networking equipment.
 
 #### adding Hosts
+
+Here's what we want to do: add all hosts in a lab to zabbix, in certain
+host groups (created above), with certain templates (that either come with
+zabbix or are added to it). The details are explained below.
 
 ```bash
 $ ./addZabbixHosts.py -f /usr/swat/db/hosts.overflow -g "Lab_238" -g "SwatCSComputers" -t "Linux by Zabbix agent" -t "SSH Service" -t "ICMP Ping"
@@ -241,6 +306,15 @@ exist in zabbix):
 
     ./addZabbixHosts.py -f hosts.256 -g Lab_256 -t "Linux by Zabbix agent"
 
+The `addZabbixHosts.py` script expects a `~/zabbixAuth` file with your
+zabbix user credentials in it:
+
+```
+$ cat ~/zabbixAuth
+https://yourserver.edu/zabbix
+zabbix_user_you_created
+zabbix_user_password
+```
 For all of our linux lab computers and servers, we use the default
 templates that come with zabbix:
 
@@ -260,9 +334,10 @@ on each lab machine:
     ServerActive=1.2.3.4          # and here
 
 At this point we have zabbix running on a server and gathering data 
-from all of our servers and lab computers.
+from all of our servers and lab computers. You can create or import
+other templates if needed.
 
-Zabbix can make it's own graphs and dashboards. Below is an overview
+Zabbix can also make it's own graphs and dashboards. Below is an overview
 dashboard with problems and some host graphs and data. See the grafana
 install info below for a better way to make pretty dashboards.
 
@@ -292,6 +367,35 @@ sudo apt-get update
 sudo apt-get install grafana
 ```
 
+Here's what mine looked like:
+
+```
+  $ sudo apt-get install grafana
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following NEW packages will be installed:
+  grafana
+0 upgraded, 1 newly installed, 0 to remove and 6 not upgraded.
+Need to get 81.2 MB of archives.
+After this operation, 275 MB of additional disk space will be used.
+Get:1 https://packages.grafana.com/oss/deb stable/main amd64 grafana amd64 9.1.6 [81.2 MB]
+Fetched 81.2 MB in 3s (24.5 MB/s)
+Selecting previously unselected package grafana.
+(Reading database ... 68741 files and directories currently installed.)
+Preparing to unpack .../grafana_9.1.6_amd64.deb ...
+Unpacking grafana (9.1.6) ...
+Setting up grafana (9.1.6) ...
+Adding system user `grafana' (UID 115) ...
+Adding new user `grafana' (UID 115) with group `grafana' ...
+Not creating home directory `/usr/share/grafana'.
+### NOT starting on installation, please execute the following statements to configure grafana to start automatically using systemd
+ sudo /bin/systemctl daemon-reload
+ sudo /bin/systemctl enable grafana-server
+### You can start grafana-server by executing
+ sudo /bin/systemctl start grafana-server
+```
+
 ### configure grafana and apache
 
 First set up apache so you can get to `http://localhost:3000`, which
@@ -317,6 +421,7 @@ $ cat /etc/apache2/sites-enabled/000-default-le-ssl.conf
         CustomLog ${APACHE_LOG_DIR}/access.log combined
 
         ProxyRequests Off
+        ProxyPreserveHost On
         ProxyPass /grafana http://localhost:3000
         ProxyPassReverse /grafana http://localhost:3000
 
