@@ -117,7 +117,7 @@ def getTemplateID(template, zabbixAPI):
     """Search for template by name and try to find ID."""
     templateArray = [template]
     templateDictionary = {'host': templateArray}
-    ret = zabbixAPI.template.get(output="templateids", filter=templateDictionary)
+    ret = zabbixAPI.template.get(output=["templateid"], filter=templateDictionary)
     if len(ret)==0:
         print("Template not found (%s)" % (template))
         sys.exit()
@@ -127,7 +127,7 @@ def getGroupID(group, zabbixAPI):
     """Search for group by name and try to find id."""
     groupArray = [group]
     groupDictionary = {'name': groupArray}
-    ret = zabbixAPI.hostgroup.get(output="groupid", filter=groupDictionary)
+    ret = zabbixAPI.hostgroup.get(output=["groupid"], filter=groupDictionary)
     if len(ret)==0:
         print("Group not found (%s)" % (group))
         sys.exit()
@@ -141,15 +141,17 @@ def updateZabbixHost(host, gIDs, zabbixAPI, tIDs):
     hostid = zabbixAPI.host.get(output=["hostid"], filter=hdict)
     hid = hostid[0]['hostid']
     ret = zabbixAPI.hostgroup.get(hostids=hid)
-    groupArray = zabbixAPI.hostgroup.get(output="groupid", hostids=hid)
+    groupArray = zabbixAPI.hostgroup.get(output=["groupid"], hostids=hid)
     # now add the new groups
     for groupID in gIDs:
         groupArray.append({'groupid':groupID})
 
     # now the templates
-    templateArray = zabbixAPI.template.get(output="templateid", hostids=hid)
+    templateArray = zabbixAPI.template.get(output=["templateid"], hostids=hid)
     for templateID in tIDs:
-        templateArray.append({'templateid':templateID})
+        entry = {'templateid':templateID}
+        if entry not in templateArray:
+            templateArray.append(entry)
 
     ourHost = {'hostid':hid,'groups':groupArray,'templates':templateArray}
    

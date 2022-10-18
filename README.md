@@ -219,6 +219,7 @@ Some additional packages installed on the zabbix server:
 - zsh
 - python3-pip
 - software-properties-common
+- zabbix-get
 
 Also used `pip3` (as a normal user) to install some python packages, 
 which we will use when we add hosts to zabbix.

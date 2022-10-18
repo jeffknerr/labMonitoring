@@ -21,6 +21,8 @@ Typical uses:
 
 So you need to make the groups and templates FIRST, 
 in zabbix (or use the templates that come with zabbix)
+
+TODO: --snmp does not work???
 """
 
 from pyzabbix import ZabbixAPI
@@ -132,7 +134,7 @@ def getTemplateID(template, zabbixAPI):
     """Search for template by name and try to find ID."""
     templateArray = [template]
     templateDictionary = {'host': templateArray}
-    ret = zabbixAPI.template.get(output="templateids", filter=templateDictionary)
+    ret = zabbixAPI.template.get(output=["templateid"], filter=templateDictionary)
     if len(ret)==0:
         print("Template not found (%s)" % (template))
         sys.exit()
@@ -142,7 +144,7 @@ def getGroupID(group, zabbixAPI):
     """Search for group by name and try to find id."""
     groupArray = [group]
     groupDictionary = {'name': groupArray}
-    ret = zabbixAPI.hostgroup.get(output="groupid", filter=groupDictionary)
+    ret = zabbixAPI.hostgroup.get(output=["groupid"], filter=groupDictionary)
     if len(ret)==0:
         print("Group not found (%s)" % (group))
         sys.exit()
@@ -168,7 +170,7 @@ def addHostToZabbix(host, tIDs, gIDs, zabbixAPI, snmp):
     for groupID in gIDs:
         groupArray.append({'groupid':groupID})
 
-    ourHost = {'host':host,'description':"cs machine created with addHosts.py",
+    ourHost = {'host':host,'description':'host made with addZabbixHosts',
             'inventory_mode':1,'interfaces':interfaceArray,'groups':groupArray}
    
     if tIDs!=[-1]:
