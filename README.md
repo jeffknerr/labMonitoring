@@ -737,3 +737,12 @@ auto_sign_up = false
 [auth.jwt]
 enabled = false
 ```
+
+### install grafanalib
+
+Recently found 
+[grafanalib](https://grafanalib.readthedocs.io/en/stable/getting-started.html),
+which does a lot of the same things our 
+[grafapyAPI repo](https://github.com/hrand1005/grafapyAPI) does.
+
+
