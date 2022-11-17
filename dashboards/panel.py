@@ -15,10 +15,12 @@ import json
 import sys
 
 colorDictionary = {"red":"#C4162A", "blue":"#1F60C4", "green":"#37872D", "yellow":"#E0B400", 
-        "orange":"#FA6400", "purple":"#440563", "baby blue":"#8AB8FF", "grey":"#757575"}
+        "orange":"#FA6400", "purple":"#440563", "baby blue":"#8AB8FF", "grey":"#757575",
+        "darkgreen":"#108010"}
 
 class Panel:
-    def __init__(self, panelType, title="title", queryArray=None, JSON=None, absLink=None):
+    def __init__(self, panelType, title="title", queryArray=None, JSON=None, 
+            absLink=None, datasource=None):
         """
         Parameters: panelType (required), optional title and queryArray. If json found,
                     initializes panel from json data instead of other arguments.
@@ -149,6 +151,10 @@ class Panel:
     
     def addQueries(self, queryList):                                              
         """ Parameters: list of query objects to be added to this panel """
+      
+        qnum = 0
+        # hack...only allows up to 26 queries...
+        qletters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         for query in queryList:
             #Throw exceptions when someone gives something that's not a query object
             targetDict = {}
@@ -178,29 +184,35 @@ class Panel:
             targetDict["item"] = {"filter": query.getItem()}
             targetDict["mode"] = 0
             targetDict["options"] = {"showDisabledItems": False, "skipEmptyValues": False}
-            targetDict["refId"] = "A"
+            targetDict["refId"] = qletters[qnum]
+            qnum += 1
             targetDict["resultFormat"] = "time_series"
+            if query.getFormat()!=None:
+                targetDict["resultFormat"] = query.getFormat()
             targetDict["table"] = {"skipEmptyValues": False}
             if query.getMode()!=None:
-                targetDict["mode"] = query.getMode()
+                targetDict["queryType"] = query.getMode()
             self.dictionary["targets"].append(targetDict)
+            if query.datasource!=None:
+                targetDict["datasource"] = query.datasource
+                targetDict["query"] = query.query
 
 class SingleStatPanel(Panel):
 
     def __init__(self, title="title", queryArray=None, valueMaps=None, rangeMaps=None, 
             prefix=None, postfix=None, colors=None, thresholds=None, units=None, JSON=None, 
             decimals=None, colorMode=None, graphMode=None, absLink=None, calcs=None,
-            orientation=None, textMode=None):
-
-        Panel.__init__(self, "singlestat", title=title, queryArray=queryArray, JSON=JSON, absLink=absLink)
+            orientation=None, textMode=None, fields="", mappings=[], datasource=None):
+        Panel.__init__(self, "singlestat", title=title, queryArray=queryArray, JSON=JSON, 
+                absLink=absLink, datasource=datasource)
         if JSON==None:
             self._buildDictionary(valueMaps, rangeMaps, prefix, postfix, colors, 
                     thresholds, units, decimals, colorMode, graphMode, calcs, orientation,
-                    textMode)
+                    textMode, fields, mappings, datasource)
 
     def _buildDictionary(self, valueMaps, rangeMaps, prefix, postfix, colors, thresholds, 
             units, decimals, colorMode, graphMode, calcs, orientation,
-            textMode):
+            textMode, fields, mappings, datasource):
         """called by constructor, builds singlestat panel dictionary"""
         singleStatDictionary = self._readJSON("singlestat.json")
         singleStatDictionary["title"] = self.title
@@ -218,6 +230,8 @@ class SingleStatPanel(Panel):
                 d = {"color":color, "value":thresh}
                 steps.append(d)
             singleStatDictionary["fieldConfig"]["defaults"]["thresholds"]["steps"] = steps
+        if mappings!=[]:
+            singleStatDictionary["fieldConfig"]["defaults"]["mappings"] = mappings
         if calcs != None:
             singleStatDictionary["options"]["reduceOptions"]["calcs"] = [calcs]
         if colorMode != None:
@@ -241,6 +255,10 @@ class SingleStatPanel(Panel):
             self.addQueries(self.queries)
         self.id = 0
         self.position = [0,0]
+        if fields != "":
+            singleStatDictionary["options"]["reduceOptions"]["fields"] = fields
+        if datasource != None:
+            singleStatDictionary["datasource"] = datasource
     
     def addValueMap(self, valueMaps):
         """
@@ -254,7 +272,7 @@ class SingleStatPanel(Panel):
 class GraphPanel(Panel):
 
     def __init__(self, title="title", queryArray=None, yAxesLeftMinMax=None, JSON=None, 
-            absLink=None, units=None, bars=None):
+            absLink=None, units=None, drawStyle=None):
         """
         Parameters: optional title and queryArray, title is 'title' by default
             queries can be added later with "addQueries()"
@@ -262,9 +280,9 @@ class GraphPanel(Panel):
         """
         Panel.__init__(self, "graph", title=title, queryArray=queryArray, JSON=JSON, absLink=absLink)
         if JSON==None:
-            self._buildDictionary(yAxesLeftMinMax, units, bars)
+            self._buildDictionary(yAxesLeftMinMax, units, drawStyle)
 
-    def _buildDictionary(self, yAxesLeftMinMax, units, bars):
+    def _buildDictionary(self, yAxesLeftMinMax, units, drawStyle):
         """
         Description: to be called by constructor, builds graph dictionary
         """
@@ -273,14 +291,16 @@ class GraphPanel(Panel):
         graphDictionary["title"] = self.title
         if self.links!=None:
             graphDictionary["links"] = self.links
-        if bars!=None:
-            graphDictionary["bars"] = "true"
+        if drawStyle!=None:
+            # could be "bars"
+            graphDictionary["fieldConfig"]["defaults"]["custom"]["drawStyle"]=drawStyle
+        else:
+            graphDictionary["fieldConfig"]["defaults"]["custom"]["drawStyle"]="lines"
         if units != None:
-            graphDictionary["yaxes"][0]["format"] = units
-            graphDictionary["yaxes"][1]["format"] = units
-        if yAxesLeftMinMax != None:
-            graphDictionary["yaxes"][0]["min"] = yAxesLeftMinMax[0]
-            graphDictionary["yaxes"][0]["max"] = yAxesLeftMinMax[1]
+            graphDictionary["fieldConfig"]["defaults"]["unit"]=units
+        if yAxesLeftMinMax!=None:
+            graphDictionary["fieldConfig"]["defaults"]["min"]=yAxesLeftMinMax[0]
+            graphDictionary["fieldConfig"]["defaults"]["max"]=yAxesLeftMinMax[1]
                             
         self.dictionary = graphDictionary
         if self.queries!=None:
@@ -290,7 +310,8 @@ class GraphPanel(Panel):
 
 class Query:
 
-    def __init__(self, host, item, group="/.*/", application=None, mode=None, alias=None):
+    def __init__(self, host, item, group="/.*/", application=None, mode=None, 
+            alias=None, format=None, datasource=None, query=None):
         """
         Parameters: host name, item name, group and application name optional (group and application
             are optional filters that can be applied in grafana to help find the correct hosts/items,
@@ -303,8 +324,26 @@ class Query:
         self.item = item
         self.group = group
         self.application = application
-        self.mode = mode
+        self.mode = mode    # queryType
         self.alias = alias
+        self.format = "time_series"
+        if format != None:       # table or time_series
+          self.format = format
+        if datasource != None:       # table or time_series
+          self.datasource = datasource
+          self.query = query
+        else:
+          self.datasource = "null"
+          self.query = ""
+
+    def __str__(self):
+        s = ""
+        s += "%s," % self.host
+        s += "%s," % self.item
+        s += "%s," % self.group
+        s += "%s," % self.datasource
+        s += "%s," % self.query
+        return s
 
     def getHost(self):
         """
@@ -341,3 +380,4 @@ class Query:
         Returns: alias for this query
         """
         return self.alias
+    def getFormat(self): return self.format

@@ -92,7 +92,8 @@ def readFile(hostfile):
         print("Error opening hostfile (%s), exiting..." % hostfile)
         sys.exit(2)
     for line in hostFile:
-        hostList.append(line.strip())
+        if not line.startswith("#"):
+            hostList.append(line.strip())
     hostFile.close() 
     return hostList
 
