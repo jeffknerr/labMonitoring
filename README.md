@@ -123,19 +123,62 @@ more secure:
 
 [https://www.digitalocean.com/community/tutorials/how-to-install-mariadb-on-debian-10](https://www.digitalocean.com/community/tutorials/how-to-install-mariadb-on-debian-10)
 
-- installed mariadb-server (was already installed from above)
-- ran the `mysql_secure_installation` script
-- got confused by the "Switch to unix_socket authentication" question and
-  actually did this -- we'll see if it causes a problem later (fingers crossed)
-- left the root password blank
-- said Yes to other defaults
-- set up an admin account with password (see the above digitalocean page)
-- tested access with `mysqladmin -u admin -p version`
+From the above digitalocean page:
+
+```
+$ sudo mysql_secure_installation
+
+Enter current password for root (enter for none):
+
+Switch to unix_socket authentication [Y/n] n
+
+Change the root password? [Y/n] n
+
+Remove anonymous users? [Y/n] y
+
+Disallow root login remotely? [Y/n] y
+
+Remove test database and access to it? [Y/n] y
+
+Reload privilege tables now? [Y/n] y
+
+Thanks for using MariaDB!
+
+```
+
+Now test it and make an admin account:
+
+```
+$ sudo mysql
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 36
+Server version: 10.5.15-MariaDB-0+deb11u1 Debian 11
+
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+MariaDB [(none)]> GRANT ALL ON *.* TO 'admin'@'localhost' IDENTIFIED BY 'useGoodpwHere' WITH GRANT OPTION;
+Query OK, 0 rows affected (0.004 sec)
+
+MariaDB [(none)]> flush privileges;
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> exit
+Bye
+
+
+$  sudo systemctl status mariadb
+$  sudo mysqladmin version
+$  mysqladmin -u admin -p version
+```
+
+The last two *version* commands should show the same info.
 
 After running the `mysql_secure_installation` script I then went back
 to the zabbix install page and did steps c, d, and e.
 
-Here's an (cleaned up) example of step c from my install:
+Here's a cleaned up example of step c from my zabbix install:
 
 ```
 $ sudo mysql -uroot -p
@@ -161,7 +204,7 @@ Bye
 $ sudo su
 root# zcat /usr/share/doc/zabbix-sql-scripts/mysql/server.sql.gz | mysql --default-character-set=utf8mb4 -uzabbix -p zabbix
 Enter password: not a good pw
-(this part take 20-40 seconds)
+(this part takes 20-40 seconds)
 root# exit
 $ sudo mysql -uroot -p
 Enter password:
@@ -178,20 +221,103 @@ Note: for the mysql password for the zabbix user, if you make
 the password (in step c) 'passwords are cool', then in `zabbix_server.conf` (step d)
 you can put the password in without quotes: `DBPassword=passwords are cool`
 
+At this point you can also change some config options for zabbix,
+but **don't start zabbix until you do the certbot/letsencrypt stuff
+below** (so login and passwd are encrypted). 
+
+For the number of hosts
+we have, I have to increase some cache sizes, otherwise zabbix complains.
+Here are the options I changed in the zabbix config file:
+
+```
+$ sudo grep -v ^# /etc/zabbix/zabbix_server.conf | sort | uniq
+CacheSize=96M
+DBPassword=not a good pw
+ValueCacheSize=64M
+...
+...
+```
+
 #### install apache and certbot/letsencrypt
 
-- make sure your firewall allows http and https to zabbix server
-- add the certbot packages
+Make sure your firewall allows http and https to your zabbix server,
+then add the certbot packages and apache, and get your SSL cert set up.
+
+Add the packages:
 
 ```bash
 sudo apt-get update
 sudo apt-get install apache2 certbot python-certbot-apache 
 ```
 
-- set it up for apache: `sudo certbot --apache`
-  * provide FQDN for domain name
-  * select "redirect all requests to HTTPS"
+Configure certbot for apache:
 
+```
+$ sudo certbot --apache
+Enter email address (used for urgent renewal and security notices)
+ (Enter 'c' to cancel): myusername@cs.college.edu
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Please read the Terms of Service at
+https://letsencrypt.org/documents/LE-SA-v1.3-September-21-2022.pdf. You must
+agree in order to register with the ACME server. Do you agree?
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+(Y)es/(N)o: y
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Would you be willing, once your first certificate is successfully issued, to
+share your email address with the Electronic Frontier Foundation, a founding
+partner of the Let's Encrypt project and the non-profit organization that
+develops Certbot? We'd like to send you email about our work encrypting the web,
+EFF news, campaigns, and ways to support digital freedom.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+(Y)es/(N)o: y
+Account registered.
+No names were found in your configuration files. Please enter in your domain
+name(s) (comma and/or space separated)  (Enter 'c' to cancel): myvm.cs.college.edu
+Requesting a certificate for myvm.cs.college.edu
+Performing the following challenges:
+http-01 challenge for myvm.cs.college.edu
+Enabled Apache rewrite module
+Waiting for verification...
+Cleaning up challenges
+Created an SSL vhost at /etc/apache2/sites-available/000-default-le-ssl.conf
+Enabled Apache socache_shmcb module
+Enabled Apache ssl module
+Deploying Certificate to VirtualHost /etc/apache2/sites-available/000-default-le-ssl.conf
+Enabling available site: /etc/apache2/sites-available/000-default-le-ssl.conf
+Enabled Apache rewrite module
+Redirecting vhost in /etc/apache2/sites-enabled/000-default.conf to ssl vhost in /etc/apache2/sites-available/000-default-le-ssl.conf
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Congratulations! You have successfully enabled https://myvm.cs.college.edu
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+$
+
+```
+
+Enable some modules for apache, and make sure it knows what to
+do when users go to https://myvm.cs.college.edu/grafana:
+
+```
+$ sudo a2enmod proxy proxy_http
+Enabling module proxy.
+Enabling module proxy_http.
+To activate the new configuration, you need to run:
+  systemctl restart apache2
+
+$ sudo vim /etc/apache2/sites-enabled/000-default-le-ssl.conf
+(added/changed these)
+        ServerName www.example.com
+        ServerAdmin webmaster@www.example.com
+
+        ProxyRequests Off
+        ProxyPreserveHost On
+        ProxyPass /grafana http://localhost:3000
+        ProxyPassReverse /grafana http://localhost:3000
+
+$ sudo systemctl restart apache2.service
+```
 
 #### configure zabbix front end
 
@@ -206,7 +332,7 @@ Follow this page for frontend install and config:
 - pick the time zone
 - click Finish
 
-Finally you should be at the login screen for the zabbix web interface
+*Finally*, you should be at the login screen for the zabbix web interface
 It should also be using https! Log in with the defaults (Admin, zabbix) and
 then change them.
 
@@ -217,16 +343,14 @@ On first login here's what I did:
 - added users (blue `Create user` user button at top right
   of Administration -> Users page) with Group equal to Zabbix admin group and with 
   permissions/role (have to click on Permissions tab) equal to "super admin"
-- disabled the Admin user (and guest) after successful login as myself
+- disabled the Admin user (and guest) *after* successful login as myself
 - set up media: 
   * Email to use our own mail server 
   * disabled most other media
-  * Set up SMS script??
-  * Set up slack webhook??
 
 ---
 
-Also NOTE: after adding a few hosts (> 20) I had to 
+Also NOTE, as mentioned above...after adding a few hosts (> 20) I had to 
 change the `CacheSize=64M` in `/etc/zabbix/zabbix_server.conf` (it was
 originally set to 8M).
 
@@ -251,22 +375,33 @@ which we will use when we add hosts to zabbix.
     pip3 install pyzabbix
     pip3 install click
     pip3 install mysql-connector-python
+    pip3 install grafanalib
 
 - pyzabbix: [https://github.com/lukecyca/pyzabbix](https://github.com/lukecyca/pyzabbix)
 - click: [https://palletsprojects.com/p/click/](https://palletsprojects.com/p/click/)
 
-#### additional configs
+#### additional agent configs
 
 In `zabbix_agentd.conf`, if you want to write and run your own commands 
 on your lab computers, you may need to _enable remote commands_:
 
     EnableRemoteCommands=1
 
+NOTE: I think this is now deprecated, and should be:
+
+    AllowKey=system.run[*]
+
 You also may need to set the `Server` variables:
 
-    Server=127.0.0.1,1.2.3.4            # change 1.2.3.4 to your zabbix server IP
-    ServerActive=127.0.0.1,1.2.3.4
+    Server=127.0.0.1,1.2.3.4          # change 1.2.3.4 to your
+    ServerActive=127.0.0.1,1.2.3.4    # zabbix server IP
 
+
+At this point you can start zabbix!
+
+```
+systemctl start zabbix-server
+```
 
 ### zabbix adding hosts and items
 
@@ -354,7 +489,7 @@ Here's the relevant part of our config file for the zabbix agent
 on each lab machine:
 
     $ grep -v ^# /etc/zabbix/zabbix_agentd.conf | sort | uniq
-    EnableRemoteCommands=1
+    EnableRemoteCommands=1        # now AllowKey=system.run[*] ??
     Server=1.2.3.4                # put your zabbix server ip here
     ServerActive=1.2.3.4          # and here
 
@@ -424,7 +559,8 @@ Not creating home directory `/usr/share/grafana'.
 ### configure grafana and apache
 
 First set up apache so you can get to `http://localhost:3000`, which
-is where grafana is.
+is where grafana is. NOTE: some of this apache config stuff was mentioned
+above, so you may have already done some of this...
 
 Add the proxy modules to apache:
 
@@ -465,7 +601,7 @@ sudo systemctl restart apache2
 
 Also need to change some grafana configs to work with apache/proxy.
 Here are the changes I made to `/etc/grafana/grafana.ini` to get this
-to work:
+to work (also see further down where I change more grafana configs):
 
 ```bash
 [server]
@@ -494,10 +630,13 @@ default admin/admin account. You should/must change that password
 (might have to do this from the `ServerAdmin -> Users` section). 
 Once you've done that we need to add zabbix as a datasource.
 
-Use the grafana-cli command in a terminal to add it and restart grafana again:
+Use the grafana-cli command in a terminal to add it (and others
+you might want) and restart grafana again:
 
 ```bash
 sudo grafana-cli plugins install alexanderzobnin-zabbix-app
+sudo grafana-cli plugins install grafana-clock-panel
+sudo grafana-cli plugins install grafana-polystat-panel
 sudo systemctl restart grafana-server
 ```
 
@@ -509,7 +648,7 @@ Notes:
 
 - I did *not* do a direct connection to the db 
 - I *did* use the Zabbix API with a new zabbix account (called grafana) and password (go back to zabbix,
-add a new user, set their role to "Super admin")
+add a new user (called grafana), set their role to "Super admin")
 - my url: `http://localhost/zabbix/api_jsonrpc.php`
 - Also make sure you "clear your browser cache" (see the note 
 at the bottom of the
@@ -556,10 +695,17 @@ a really long string that you should replace with your grafana token....
 http://localhost:3000
 ```
 
+Also note: I think grafana is moving away from the API key and replacing
+it with "Service Accounts", but they seem to do the exact same thing...
 
 ## guest access 
 
-Here are the changes to `/etc/grafana/grafana.ini` to allow guest access
+Finally, I want my sysadmins to be able to log in to grafana and change 
+things, but I also want my faculty and students to be able to *view* all
+dashboards (without logging in), so they can see if computers are up or
+which computers are busy.
+
+Here are the changes to `/etc/grafana/grafana.ini` to allow *guest* access
 (and a few other things, like serving from `/grafana`):
 
 ```
