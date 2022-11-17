@@ -31,14 +31,14 @@ useful dashboards.
 Note: as of June 2021, this works for Zabbix v5.4 and Grafana v8.0.3
 (on Debian 10).
 
-Note: updating this page in September 2022. Trying Zabbix v6.2 and Grafana v8.0.3
+Note: updating this page in September 2022. Trying Zabbix v6.2.3 and Grafana v9.2.1
 (on Debian 11).
 
 ## install zabbix
 
 ### preliminaries
 
-For our install (updated Fall 2022) we used debian buster on a virtual
+For our install (updated Fall 2022) we used debian bullseye on a virtual
 machine for the zabbix server, running version 6.2 of zabbix. Both zabbix
 and grafana run on the same server.
 
@@ -48,7 +48,7 @@ Here's the Zabbix System Information panel to show how many things
 ![zabbix system info](images/zabbixSysInfo.png)
 
 For our virtual machine, we are using qemu-kvm, also running on a debian
-buster host server. The kvm host server has 128GB of memory and 16 CPU
+host server. The kvm host server has 64GB of memory and 8 CPU
 cores, and runs a few other virtual machines for us.
 
 For the actual zabbix server, our virtual machine has 64GB of memory,
@@ -58,30 +58,54 @@ all of my other servers, so I need it to run well. Here's the output
 from the `top` command (after everything is working):
 
 ```
-top - 11:03:53 up 5 days, 22:26,  1 user,  load average: 1.00, 0.77, 0.75
-Tasks: 176 total,   1 running, 175 sleeping,   0 stopped,   0 zombie
-%Cpu(s):  5.5 us,  4.5 sy,  0.0 ni, 86.8 id,  2.3 wa,  0.0 hi,  0.8 si,  0.0 st
-MiB Mem :  64321.0 total,  53090.1 free,   1314.9 used,   9916.0 buff/cache
-MiB Swap:   2048.0 total,   2048.0 free,      0.0 used.  62212.9 avail Mem 
+top - 10:05:57 up 28 days, 22:44,  2 users,  load average: 0.34, 0.50, 0.58
+Tasks: 172 total,   1 running, 170 sleeping,   0 stopped,   1 zombie
+%Cpu0  :  0.9 us,  6.3 sy,  0.0 ni, 91.0 id,  0.9 wa,  0.0 hi,  0.9 si,  0.0 st
+%Cpu1  :  1.8 us, 10.0 sy,  0.0 ni, 84.5 id,  3.6 wa,  0.0 hi,  0.0 si,  0.0 st
+%Cpu2  :  3.7 us,  3.7 sy,  0.0 ni, 85.3 id,  1.8 wa,  0.0 hi,  5.5 si,  0.0 st
+%Cpu3  :  2.8 us,  5.5 sy,  0.0 ni, 89.0 id,  0.0 wa,  0.0 hi,  2.8 si,  0.0 st
+MiB Mem :  64320.8 total,  44076.7 free,   2047.7 used,  18196.4 buff/cache
+MiB Swap:   2048.0 total,   2048.0 free,      0.0 used.  61466.6 avail Mem
 ```
 
 And our disk space currently looks like this:
 
 ```
-$ df -h                                                               
+$ df -h
 Filesystem      Size  Used Avail Use% Mounted on
-/dev/sda1        53G   12G   39G  23% /
-/dev/sda4       7.8G  3.1G  4.3G  42% /usr
-/dev/sda3       574M  1.2M  561M   1% /tmp
+/dev/sda1        57G   16G   39G  29% /
+/dev/sda4       7.8G  3.2G  4.2G  44% /usr
+/dev/sda3       574M  268K  562M   1% /tmp
 ```
 
-Of the 12GB used so far in `/`, almost all of that is in `/var/lib/mysql` where
+Of the 16GB used so far in `/`, almost all of that is in `/var/lib/mysql` where
 the data is stored (and on a past server this went up to 32GB over time).
 
 Note: for debian kvm hosts, see the
 [Libvirt Wiki](https://wiki.libvirt.org/page/Virtio)
 if your host network interface is only 100Mbps (change to using the `virtio` interface).
-ADD STUFF HERE ABOUT HOW.
+For example, on my kvmhost, after I had installed the kvmguest, I shut it down
+and then edited the kvmguest file, changing the `e1000` network driver to `virtio`:
+
+```
+$ ssh kvmhost
+kvmhost$ sudo virsh shutdown kvmguest
+kvmhost$ sudo virsh edit kvmguest
+    <interface type='bridge'>
+      <mac address='52:54:00:00:00:3a'/>
+      <source bridge='br0'/>
+      <model type='e1000'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+#### change to ####
+    <interface type='bridge'>
+      <mac address='52:54:00:00:00:3a'/>
+      <source bridge='br0'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+kvmhost$ sudo virsh start kvmguest
+```
 
 ### install details
 
