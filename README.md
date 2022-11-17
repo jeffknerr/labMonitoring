@@ -740,9 +740,22 @@ enabled = false
 
 ### install grafanalib
 
-Recently found 
+I recently found 
 [grafanalib](https://grafanalib.readthedocs.io/en/stable/getting-started.html),
 which does a lot of the same things our 
 [grafapyAPI repo](https://github.com/hrand1005/grafapyAPI) does.
 
+In the dashboards directory is a sample program, called `network.py`,
+that uses grafanalib to make a dashboard with single stat panels for
+each computer monitored by zabbix:
+
+![network](images/network.png)
+
+Our grafapyAPI forces you to have the same size panels
+across the whole dashboard, where `grafanalib` allows you to
+create any size panel, anywhere on the dashboard. This `network.py`
+example does not do this, but I have other dashboards that make
+use of this feature:
+
+![servers](images/servers.png)
 
