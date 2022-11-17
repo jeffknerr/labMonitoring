@@ -1,0 +1,4 @@
+postURL|http://localhost:3000/api/dashboards/db
+base|https://myvm.cs.college.edu/grafana/d/LINKtoHOSTspecificDASHBOARDhere
+uid|DATASRCuidHERE
+dstype|alexanderzobnin-zabbix-datasource
